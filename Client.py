@@ -1,6 +1,6 @@
 import socket
 
-def start_client(server_host='10.229.21.163', server_port=12345):
+def start_client(server_host='10.229.21.163', server_port=17574):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -10,8 +10,8 @@ def start_client(server_host='10.229.21.163', server_port=12345):
     client_socket.settimeout(10.0) 
     
     while True:
-        # Enviar uma mensagem
-        message = input("Digite a sua mensagem (Digite 'sair' para sair): ")
+       
+        message = input("Digite a sua mensagem (Digite 'sair' para sair): ")  # Enviar uma mensagem
         if message.lower() == 'sair' :
             break
         client_socket.sendall(message.encode())
@@ -26,4 +26,5 @@ def start_client(server_host='10.229.21.163', server_port=12345):
 
 
 if __name__ == '__main__':
-    start_client(server_host='10.229.21.163', server_port=12345)
+    start_client(server_host='10.229.21.163', server_port=17574)
+
