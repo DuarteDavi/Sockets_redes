@@ -3,9 +3,10 @@ import socket
 import time
 import random
 
-HOST = '10.229.21.163'
+HOST = '0.0.0.0'
 ports = [random.randint(1024, 49151) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 49151
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
+posix_time = time.time()
 
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
@@ -65,13 +66,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 while True:
                     posix_time = time.time()
                     print(f"Recebido de {addr[0]}: {data.decode()} em hora POSIX: {posix_time}")
-                    
-                    if len(data.decode()) > 218:
-                        # Envia uma mensagem de erro ao cliente
-                        conn.sendall(f"Erro: Mensagem muito grande! (Máximo de 218 caracteres)".encode())
-                    else:
-                        # Envia uma mensagem de sucesso ao cliente
-                        conn.sendall(f"Sucesso: Mensagem recebida com sucesso! em hora POSIX: {posix_time}".encode())
+                    if data.decode().startswith('03'):
+                        if len(data.decode()) > 256:
+                            # Envia uma mensagem de erro ao cliente
+                            conn.sendall(f"Erro: Mensagem muito grande! (Máximo de 256 caracteres)".encode())
+                        else:
+                            # Envia uma mensagem de sucesso ao cliente
+                            conn.sendall(f"Sucesso: Mensagem recebida com sucesso! em hora POSIX: {posix_time}".encode())
 
                     data = conn.recv(1024)
                     if not data:
