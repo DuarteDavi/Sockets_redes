@@ -58,6 +58,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
                 # Loop para tratamento de mensagens do cliente
                 while True:
+                    posix_time = time.time()
                     print(f"Recebido de {addr[0]}: {data.decode()} em hora POSIX: {posix_time}")
                     if len(data.decode()) > 218:
                         # Envia uma mensagem de erro ao cliente
