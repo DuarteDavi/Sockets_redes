@@ -20,6 +20,8 @@ def start_client(server_host='10.10.56.8', server_port=42647):
             
         else:
             continue
+
+        
         
 
 
