@@ -4,7 +4,7 @@ import time
 import random
 
 HOST = '0.0.0.0'
-ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 49151
+ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
 posix_time = time.time()
 print(f"Servidor iniciado em {HOST}:{PORT}")
@@ -19,16 +19,20 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, t
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))
     s.listen()
+    print(f"Aguardando conexões na porta {PORT}...")
     while True:
         try:
             conn, addr = s.accept()
             with conn:
                 print(f"Conectado por {addr}")
 
+                # Envia uma mensagem inicial para o cliente
+                conn.sendall("Bem-vindo ao servidor. Envie '01' para se cadastrar.".encode())
+
                 # Recebe dados do cliente
                 data = conn.recv(1024)
                 if not data:
-                    break
+                    continue
 
                 # Verifica se já existe um ID associado a este IP
                 cursor.execute("SELECT id FROM clientes WHERE endereco=?", (addr[0],))
@@ -42,13 +46,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     conn.sendall("Parece que você não está cadastrado em nosso servidor, envie '01' para se cadastrar.".encode())
                     print(f"Enviado pedido de cadastro para {addr}")
                     data = conn.recv(1024)
+                    if not data:
+                        continue
 
                     while data.decode() != '01':
                         print(f"Received invalid message from {addr}, not in database.")
                         conn.sendall("Parece que você não está cadastrado em nosso servidor, envie '01' para se cadastrar.".encode())
                         data = conn.recv(1024)
-
-                    # Se chegou aqui, significa que data.decode() é '01'
+                        if not data:
+                            continue
                     unique_id = '02' + ''.join([str(random.randint(0, 9)) for _ in range(13)])
                     conn.sendall(f"Seu ID único é: {unique_id}".encode())
                     
@@ -56,13 +62,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
                                    (unique_id, addr[0], str(posix_time)))
                     conn_db.commit()
-                                    # Recebe dados do cliente
-                
-                data = conn.recv(1024)
-                if not data:
-                    break
 
-                # Loop para tratamento de mensagens do cliente
+                # Recebe dados do cliente
                 while True:
                     data = conn.recv(1024)
                     if not data:
@@ -71,15 +72,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     posix_time = time.time()
                     print(f"Recebido de {addr[0]}: {data.decode()} em hora POSIX: {posix_time}")
                     if len(data.decode()) > 218:
-                        # Envia uma mensagem de erro ao cliente
                         conn.sendall(f"Erro: Mensagem muito grande! (Máximo de 218 caracteres)".encode())
                     else:
-                        # Envia uma mensagem de sucesso ao cliente
                         conn.sendall(f"Sucesso: Mensagem recebida com sucesso! em hora POSIX: {posix_time}".encode())
-
-                    data = conn.recv(1024)
-                    if not data:
-                        break
 
         except ConnectionResetError:
             print(f"Conexão perdida com {addr}.")
