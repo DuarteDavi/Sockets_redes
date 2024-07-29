@@ -6,7 +6,6 @@ import random
 HOST = '0.0.0.0'
 ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
-posix_time = time.time()
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
 # Conecta ao banco de dados SQLite
@@ -30,38 +29,30 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 conn.sendall("Bem-vindo ao servidor. Envie '01' para se cadastrar.".encode())
 
                 # Recebe dados do cliente
-                data = conn.recv(1024)
-                if not data:
-                    continue
+                data = conn.recv(1024).decode()
+                print(f"Recebido do cliente: {data}")
 
-                # Verifica se já existe um ID associado a este IP
-                cursor.execute("SELECT id FROM clientes WHERE endereco=?", (addr[0],))
-                existing_id = cursor.fetchone()
+                if data == '01':
+                    # Verifica se já existe um ID associado a este IP
+                    cursor.execute("SELECT id FROM clientes WHERE endereco=?", (addr[0],))
+                    existing_id = cursor.fetchone()
 
-                if existing_id:
-                    unique_id = existing_id[0]
-                    print(f"Conectado por {addr} com ID {unique_id}")
+                    if existing_id:
+                        unique_id = existing_id[0]
+                        print(f"Conectado por {addr} com ID {unique_id}")
+                        conn.sendall(f"Seu ID único é: {unique_id}".encode())
+                    else:
+                        # Se não existe ID, cria um novo ID
+                        unique_id = '02' + ''.join([str(random.randint(0, 9)) for _ in range(13)])
+                        conn.sendall(f"Seu ID único é: {unique_id}".encode())
+                        
+                        # Insere o ID único e o endereço do cliente no banco de dados
+                        cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
+                                       (unique_id, addr[0], str(time.time())))
+                        conn_db.commit()
+
                 else:
-                    # Se não existe ID, envia mensagem para se cadastrar
-                    conn.sendall("Parece que você não está cadastrado em nosso servidor, envie '01' para se cadastrar.".encode())
-                    print(f"Enviado pedido de cadastro para {addr}")
-                    data = conn.recv(1024)
-                    if not data:
-                        continue
-
-                    while data.decode() != '01':
-                        print(f"Received invalid message from {addr}, not in database.")
-                        conn.sendall("Parece que você não está cadastrado em nosso servidor, envie '01' para se cadastrar.".encode())
-                        data = conn.recv(1024)
-                        if not data:
-                            continue
-                    unique_id = '02' + ''.join([str(random.randint(0, 9)) for _ in range(13)])
-                    conn.sendall(f"Seu ID único é: {unique_id}".encode())
-                    
-                    # Insere o ID único e o endereço do cliente no banco de dados
-                    cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
-                                   (unique_id, addr[0], str(posix_time)))
-                    conn_db.commit()
+                    conn.sendall("Mensagem inválida. Envie '01' para se cadastrar.".encode())
 
                 # Recebe dados do cliente
                 while True:

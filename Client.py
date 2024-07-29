@@ -1,7 +1,7 @@
 import socket
 import time
 
-def start_client(server_host='10.228.247.158', server_port=1620):
+def start_client(server_host='10.228.247.158', server_port=4109):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -14,14 +14,19 @@ def start_client(server_host='10.228.247.158', server_port=1620):
         print(f"Conectado ao servidor em {server_host}:{server_port}")
 
         # Receber mensagem inicial do servidor
-        data = client_socket.recv(1024).decode()
-        print(f"Mensagem do servidor: {data}")
+        initial_message = client_socket.recv(1024).decode()
+        print(f"Mensagem do servidor: {initial_message}")
+
+        # Enviar '01' para se cadastrar
+        message = "01"
+        client_socket.sendall(message.encode())
+        print("Mensagem '01' enviada.")
+
+        # Receber o ID único do servidor
+        unique_id = client_socket.recv(1024).decode()
+        print(f"Recebido do servidor: {unique_id}")
 
         while True:
-            message = "01"
-            client_socket.sendall(message.encode())
-            print("Mensagem '01' enviada.")
-
             recipient_id = input("Digite o ID do destinatário (15 dígitos): ")
             if len(recipient_id) != 15:
                 print("O ID do destinatário deve ter exatamente 15 dígitos.")
@@ -33,8 +38,8 @@ def start_client(server_host='10.228.247.158', server_port=1620):
                 continue
 
             timestamp = time.time()
-            # Formatar a mensagem com '03', IP do cliente, ID do destinatário, timestamp e conteúdo da mensagem
-            formatted_message = f'03{client_socket.getsockname()[0].replace(".", "")}{recipient_id}{int(timestamp)}{message_content.replace(" ", "_")}'
+            # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
+            formatted_message = f'03{unique_id}{recipient_id}{int(timestamp)}{message_content.replace(" ", "_")}'
             client_socket.sendall(formatted_message.encode())
             print("Mensagem enviada ao servidor:", formatted_message)
             
@@ -50,4 +55,4 @@ def start_client(server_host='10.228.247.158', server_port=1620):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='10.228.247.158', server_port=1620)
+    start_client(server_host='10.228.247.158', server_port=4109)
