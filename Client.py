@@ -1,7 +1,7 @@
 import socket
 import time
 
-def start_client(server_host='10.229.21.163', server_port=10316):
+def start_client(server_host='10.228.247.158', server_port=2592):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -12,11 +12,12 @@ def start_client(server_host='10.229.21.163', server_port=10316):
     
     try:
         while True:
-            
-          
-            recipient_id = input("Digite o ID do destinatário (13 dígitos): ")
-            if len(recipient_id) != 13:
-                print("O ID do destinatário deve ter exatamente 13 dígitos.")
+            message = "01"
+            client_socket.sendall(message.encode())
+
+            recipient_id = input("Digite o ID do destinatário (15 dígitos): ")
+            if len(recipient_id) != 15:
+                print("O ID do destinatário deve ter exatamente 15 dígitos.")
                 continue
 
             message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
@@ -45,4 +46,4 @@ def start_client(server_host='10.229.21.163', server_port=10316):
         
 
 if __name__ == '__main__':
-    start_client(server_host='10.229.21.163', server_port=10316)
+    start_client(server_host='10.228.247.158', server_port=2592)

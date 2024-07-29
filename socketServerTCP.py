@@ -4,7 +4,7 @@ import time
 import random
 
 HOST = '0.0.0.0'
-ports = [random.randint(1024, 49151) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 49151
+ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 49151
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
 posix_time = time.time()
 print(f"Servidor iniciado em {HOST}:{PORT}")
@@ -28,7 +28,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 # Recebe dados do cliente
                 data = conn.recv(1024)
                 if not data:
-                    continue
+                    break
 
                 # Verifica se já existe um ID associado a este IP
                 cursor.execute("SELECT id FROM clientes WHERE endereco=?", (addr[0],))
@@ -40,24 +40,34 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 else:
                     # Se não existe ID, envia mensagem para se cadastrar
                     conn.sendall("Parece que você não está cadastrado em nosso servidor, envie '01' para se cadastrar.".encode())
+                    print(f"Enviado pedido de cadastro para {addr}")
                     data = conn.recv(1024)
 
                     while data.decode() != '01':
-                        print(f"Received invalid message from {addr}")
+                        print(f"Received invalid message from {addr}, not in database.")
                         conn.sendall("Parece que você não está cadastrado em nosso servidor, envie '01' para se cadastrar.".encode())
                         data = conn.recv(1024)
 
                     # Se chegou aqui, significa que data.decode() é '01'
                     unique_id = '02' + ''.join([str(random.randint(0, 9)) for _ in range(13)])
                     conn.sendall(f"Seu ID único é: {unique_id}".encode())
-
+                    
                     # Insere o ID único e o endereço do cliente no banco de dados
                     cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
                                    (unique_id, addr[0], str(posix_time)))
                     conn_db.commit()
+                                    # Recebe dados do cliente
+                
+                data = conn.recv(1024)
+                if not data:
+                    break
 
                 # Loop para tratamento de mensagens do cliente
                 while True:
+                    data = conn.recv(1024)
+                    if not data:
+                        break
+
                     posix_time = time.time()
                     print(f"Recebido de {addr[0]}: {data.decode()} em hora POSIX: {posix_time}")
                     if len(data.decode()) > 218:
@@ -69,7 +79,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
                     data = conn.recv(1024)
                     if not data:
-                        break  # Trata desconexão do cliente
+                        break
 
         except ConnectionResetError:
             print(f"Conexão perdida com {addr}.")
