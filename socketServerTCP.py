@@ -26,11 +26,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print(f"Conectado por {addr}")
 
                 # Envia uma mensagem inicial para o cliente
-                conn.sendall("Bem-vindo ao servidor. Envie '01' para se cadastrar.".encode())
+                conn.sendall("Bem-vindo ao servidor. Envie '01' para se cadastrar. \n".encode())
 
                 # Recebe dados do cliente
                 data = conn.recv(1024).decode()
-                print(f"Recebido do cliente: {data}")
+                print(f"Recebido do cliente: {data} \n")
 
                 if data == '01':
                     # Verifica se já existe um ID associado a este IP
@@ -39,12 +39,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
                     if existing_id:
                         unique_id = existing_id[0]
-                        print(f"Conectado por {addr} com ID {unique_id}")
-                        conn.sendall(f"Seu ID único é: {unique_id}".encode())
+                        print(f"Conectado por {addr} com ID {unique_id} \n")
+                        conn.sendall(f"02{unique_id} \n".encode())
                     else:
                         # Se não existe ID, cria um novo ID
-                        unique_id = '02' + ''.join([str(random.randint(0, 9)) for _ in range(13)])
-                        conn.sendall(f"Seu ID único é: {unique_id}".encode())
+                        unique_id = ''.join([str(random.randint(0, 9)) for _ in range(13)])
+                        conn.sendall(f"02{unique_id} \n".encode())
                         
                         # Insere o ID único e o endereço do cliente no banco de dados
                         cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
@@ -52,7 +52,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         conn_db.commit()
 
                 else:
-                    conn.sendall("Mensagem inválida. Envie '01' para se cadastrar.".encode())
+                    conn.sendall("Mensagem inválida. Envie '01' para se cadastrar. \n".encode())
 
                 # Recebe dados do cliente
                 while True:
@@ -61,11 +61,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         break
 
                     posix_time = time.time()
-                    print(f"Recebido de {addr[0]}: {data.decode()} em hora POSIX: {posix_time}")
+                    print(f"Recebido de {addr[0]}: {data.decode()} \n")
                     if len(data.decode()) > 218:
-                        conn.sendall(f"Erro: Mensagem muito grande! (Máximo de 218 caracteres)".encode())
+                        conn.sendall(f"Erro: Mensagem muito grande! (Máximo de 218 caracteres) \n".encode())
                     else:
-                        conn.sendall(f"Sucesso: Mensagem recebida com sucesso! em hora POSIX: {posix_time}".encode())
+                        conn.sendall(f"Sucesso: Mensagem recebida com sucesso! \n".encode())
 
         except ConnectionResetError:
             print(f"Conexão perdida com {addr}.")

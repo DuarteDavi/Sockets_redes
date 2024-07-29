@@ -1,7 +1,7 @@
 import socket
 import time
 
-def start_client(server_host='10.228.247.158', server_port=4109):
+def start_client(server_host='10.228.247.235', server_port=1380):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -23,13 +23,15 @@ def start_client(server_host='10.228.247.158', server_port=4109):
         print("Mensagem '01' enviada.")
 
         # Receber o ID único do servidor
-        unique_id = client_socket.recv(1024).decode()
-        print(f"Recebido do servidor: {unique_id}")
+        modified_id = client_socket.recv(1024).decode()
+        print(f"Recebido do servidor: {modified_id}")
+        unique_id = modified_id[2:]
+        print(f"ID único: {unique_id}")
 
         while True:
-            recipient_id = input("Digite o ID do destinatário (15 dígitos): ")
-            if len(recipient_id) != 15:
-                print("O ID do destinatário deve ter exatamente 15 dígitos.")
+            recipient_id = input("Digite o ID do destinatário (13 dígitos): ")
+            if len(recipient_id) != 13:
+                print("O ID do destinatário deve ter exatamente 13 dígitos.")
                 continue
 
             message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
@@ -41,7 +43,7 @@ def start_client(server_host='10.228.247.158', server_port=4109):
             # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
             formatted_message = f'03{unique_id}{recipient_id}{int(timestamp)}{message_content.replace(" ", "_")}'
             client_socket.sendall(formatted_message.encode())
-            print("Mensagem enviada ao servidor:", formatted_message)
+            print("Mensagem enviada ao servidor: ", formatted_message)
             
             # Receber a resposta do servidor
             try:
@@ -55,4 +57,4 @@ def start_client(server_host='10.228.247.158', server_port=4109):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='10.228.247.158', server_port=4109)
+    start_client(server_host='10.228.247.235', server_port=1380)
