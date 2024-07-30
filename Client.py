@@ -1,7 +1,7 @@
 import socket
 import time
 
-def start_client(server_host='10.228.247.235', server_port=1380):
+def start_client(server_host='167.88.33.160', server_port=1193):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -57,4 +57,4 @@ def start_client(server_host='10.228.247.235', server_port=1380):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='10.228.247.235', server_port=1380)
+    start_client(server_host='167.88.33.160', server_port=1193)
