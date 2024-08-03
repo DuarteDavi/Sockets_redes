@@ -2,7 +2,7 @@ import socket
 import time
 import datetime
 
-def start_client(server_host='192.168.8.18', server_port=3917):
+def start_client(server_host='192.168.8.18', server_port=1260):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -42,6 +42,7 @@ def start_client(server_host='192.168.8.18', server_port=3917):
             print("Menu:")
             print("1. Enviar mensagem")
             print("2. Verificar mensagens recebidas")
+            print("9. Encerrar o programa")
             choice = input("Escolha uma opção: ")
 
             if choice == '1':
@@ -80,12 +81,15 @@ def start_client(server_host='192.168.8.18', server_port=3917):
                         print("Nenhuma mensagem recebida. \n")
                 except socket.timeout:
                     print("Nenhuma mensagem recebida. \n")
+            elif choice == '9':
+                print("Desconectando... \n")
+                break
             else:
-                print("Opção inválida. Por favor, escolha 1 ou 2. \n")
+                print("Opção inválida. Por favor, escolha 1, 2 ou 9. \n")
 
     finally:
         # Fecha o socket independentemente de como o loop while termina
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='192.168.8.18', server_port=3917)
+    start_client(server_host='192.168.8.18', server_port=1260)
