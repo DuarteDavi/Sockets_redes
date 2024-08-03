@@ -72,9 +72,9 @@ def start_client(server_host='192.168.8.18', server_port=3318):
                             print(f"Resposta do servidor: {data} \n")
                         elif len(data) >= 36:
                             # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
-                            src_id = data[:13].strip()  # ID do remetente
-                            timestamp_str = data[26:36].strip()  # Timestamp
-                            message_data = data[36:].strip().replace("_", " ")  # Conteúdo da mensagem
+                            src_id = data[2:15].strip()  # ID do remetente
+                            timestamp_str = data[30:40].strip()  # Timestamp
+                            message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
 
                             try:
                                 timestamp = int(timestamp_str)
