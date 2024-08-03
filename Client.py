@@ -9,6 +9,9 @@ def start_client(server_host='192.168.8.18', server_port=3318):
     # Definir timeout
     client_socket.settimeout(10.0)  # Timeout de 10 segundos
 
+    # Dicionário para armazenar mensagens trocadas entre IDs
+    messages_dict = {}
+
     try:
         # Conectar ao servidor
         client_socket.connect((server_host, server_port))
@@ -38,6 +41,14 @@ def start_client(server_host='192.168.8.18', server_port=3318):
             
             return human_readable_time
 
+        def display_messages_with_id(participant_id):
+            if participant_id in messages_dict:
+                print(f"Mensagens trocadas com {participant_id}:")
+                for msg in messages_dict[participant_id]:
+                    print(msg)
+            else:
+                print(f"Nenhuma mensagem trocada com o ID {participant_id}.\n")
+
         while True:
             print("Menu:")
             print("1. Enviar mensagem")
@@ -63,6 +74,11 @@ def start_client(server_host='192.168.8.18', server_port=3318):
                 client_socket.sendall(formatted_message.encode())
                 print("Mensagem enviada ao servidor: ", formatted_message + "\n")
 
+                # Armazenar a mensagem enviada
+                if recipient_id not in messages_dict:
+                    messages_dict[recipient_id] = []
+                messages_dict[recipient_id].append(f"Enviado para {recipient_id} em {convert_timestamp(timestamp)}: {message_content}")
+
             elif choice == '2':
                 # Verificar se há mensagens do servidor
                 try:
@@ -79,6 +95,11 @@ def start_client(server_host='192.168.8.18', server_port=3318):
                             try:
                                 timestamp = int(timestamp_str)
                                 print(f"Mensagem recebida de {src_id} em {convert_timestamp(timestamp)}: {message_data} \n")
+                                
+                                # Armazenar a mensagem recebida
+                                if src_id not in messages_dict:
+                                    messages_dict[src_id] = []
+                                messages_dict[src_id].append(f"Recebido de {src_id} em {convert_timestamp(timestamp)}: {message_data}")
                             except ValueError:
                                 print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                         else:
@@ -87,6 +108,25 @@ def start_client(server_host='192.168.8.18', server_port=3318):
                         print("Nenhuma mensagem recebida. \n")
                 except socket.timeout:
                     print("Nenhuma mensagem recebida. \n")
+
+                # Submenu para visualizar mensagens trocadas com um ID específico
+                while True:
+                    print("Submenu:")
+                    print("1. Ver mensagens trocadas com um ID específico")
+                    print("9. Voltar ao menu principal")
+                    sub_choice = input("Escolha uma opção: ")
+
+                    if sub_choice == '1':
+                        participant_id = input("Digite o ID do participante (13 dígitos): ")
+                        if len(participant_id) != 13:
+                            print("O ID do participante deve ter exatamente 13 dígitos. \n")
+                            continue
+                        display_messages_with_id(participant_id)
+                    elif sub_choice == '9':
+                        break
+                    else:
+                        print("Opção inválida. Por favor, escolha 1 ou 9. \n")
+
             elif choice == '9':
                 print("Desconectando... \n")
                 break
