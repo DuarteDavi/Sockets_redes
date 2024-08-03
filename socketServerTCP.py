@@ -15,6 +15,7 @@ cursor = conn_db.cursor()
 
 # Cria a tabela 'clientes' se ela não existir
 cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT)''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens (dst TEXT, src TEXT, timestamp TEXT, msg_data TEXT)''')
 conn_db.commit()
 
 # Dicionário global para armazenar as conexões dos clientes
@@ -48,7 +49,7 @@ def handle_client(conn, addr):
 
             # Insere o ID único e o endereço do cliente no banco de dados
             cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
-                           (unique_id, addr[0], str(time.time())))
+                           (unique_id, addr[0], str(int(time.time()))))
             conn_db.commit()
     else:
         conn.sendall("Mensagem inválida. Envie '01' para se cadastrar. \n".encode())
@@ -59,41 +60,62 @@ def handle_client(conn, addr):
             client_connections[unique_id] = conn
         print(f"Usuários conectados: {list(client_connections.keys())} \n")
 
-    # Recebe dados do cliente
-    while True:
-        data = conn.recv(1024)
-        if not data:
-            break
+        # Verificar se há mensagens pendentes para o cliente
+        cursor.execute("SELECT src, timestamp, msg_data FROM mensagens WHERE dst=?", (unique_id,))
+        pending_messages = cursor.fetchall()
+        for msg in pending_messages:
+            src, timestamp, msg_data = msg
+            conn.sendall(f"{src}{unique_id}{timestamp}{msg_data}".encode())
 
-        message = data.decode()
-        print(f"Recebido de {unique_id}: {message} \n")
+        # Remover as mensagens pendentes entregues
+        cursor.execute("DELETE FROM mensagens WHERE dst=?", (unique_id,))
+        conn_db.commit()
 
-        if len(message) >= 256:
-            conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
-        else:
-            cod = message[:2]
-            src = message[2:15]
-            dst = message[15:30].strip()  # Remove espaços extras
-            timestamp = message[30:40]
-            msg_data = message[40:]
+    try:
+        # Recebe dados do cliente
+        while True:
+            try:
+                data = conn.recv(1024)
+                if not data:
+                    break
 
-            print(f"Mensagem decodificada - COD: {cod}, SRC: {src}, DST: '{dst}', TIMESTAMP: {timestamp}, DATA: {msg_data}")
+                message = data.decode()
+                print(f"Recebido de {unique_id}: {message} \n")
 
-            with client_connections_lock:
-                if dst in client_connections:
-                    dest_conn = client_connections[dst]
-                    dest_conn.sendall(data)
-                    conn.sendall(f"Sucesso: Mensagem enviada para {dst}! \n".encode())
+                if len(message) >= 256:
+                    conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
                 else:
-                    conn.sendall(f"Erro: Destino {dst} não encontrado. \n".encode())
+                    cod = message[:2]
+                    src = message[2:15].strip()  # Remove espaços extras
+                    dst = message[15:30].strip()  # Remove espaços extras
+                    timestamp = message[30:40]
+                    msg_data = message[40:]
 
-    # Remove a conexão do cliente do dicionário global
-    if unique_id:
-        with client_connections_lock:
-            del client_connections[unique_id]
+                    print(f"Mensagem decodificada - COD: {cod}, SRC: {src}, DST: '{dst}', TIMESTAMP: {timestamp}, DATA: {msg_data}")
 
-    print(f"Conexão encerrada com {addr}.")
-    conn.close()
+                    with client_connections_lock:
+                        if dst in client_connections:
+                            dest_conn = client_connections[dst]
+                            dest_conn.sendall(data)
+                            conn.sendall(f"Sucesso: Mensagem enviada para {dst}! \n".encode())
+                        else:
+                            # Armazena a mensagem no banco de dados se o destinatário não estiver online
+                            cursor.execute("INSERT INTO mensagens (dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?)",
+                                           (dst, src, timestamp, msg_data))
+                            conn_db.commit()
+                            conn.sendall(f"Erro: Destino {dst} não encontrado. Mensagem armazenada para entrega futura. \n".encode())
+            except ConnectionResetError:
+                print(f"Conexão resetada pelo cliente {addr}.")
+                break
+    finally:
+        # Remove a conexão do cliente do dicionário global
+        if unique_id:
+            with client_connections_lock:
+                if unique_id in client_connections:
+                    del client_connections[unique_id]
+
+        print(f"Conexão encerrada com {addr}.")
+        conn.close()
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))

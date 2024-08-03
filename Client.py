@@ -2,7 +2,7 @@ import socket
 import time
 import datetime
 
-def start_client(server_host='192.168.8.18', server_port=1260):
+def start_client(server_host='192.168.8.18', server_port=4748):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -59,7 +59,7 @@ def start_client(server_host='192.168.8.18', server_port=1260):
 
                 timestamp = int(time.time())
                 # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
-                formatted_message = f'03{unique_id}{recipient_id}{timestamp}{message_content.replace(" ", "_")}'
+                formatted_message = f'03{unique_id}{recipient_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}'
                 client_socket.sendall(formatted_message.encode())
                 print("Mensagem enviada ao servidor: ", formatted_message + "\n")
 
@@ -70,13 +70,19 @@ def start_client(server_host='192.168.8.18', server_port=1260):
                     if data:
                         if data.startswith("Sucesso") or data.startswith("Erro"):
                             print(f"Resposta do servidor: {data} \n")
-                        else:
+                        elif len(data) >= 40:
                             # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
                             src_id = data[2:15].strip()  # ID do remetente
-                            timestamp = int(data[30:40])  # Timestamp
+                            timestamp_str = data[30:40].strip()  # Timestamp
                             message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
 
-                            print(f"Mensagem recebida de {src_id} em {convert_timestamp(timestamp)}: {message_data} \n")
+                            try:
+                                timestamp = int(timestamp_str)
+                                print(f"Mensagem recebida de {src_id} em {convert_timestamp(timestamp)}: {message_data} \n")
+                            except ValueError:
+                                print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                        else:
+                            print("Formato de mensagem inválido recebido. \n")
                     else:
                         print("Nenhuma mensagem recebida. \n")
                 except socket.timeout:
@@ -92,4 +98,4 @@ def start_client(server_host='192.168.8.18', server_port=1260):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='192.168.8.18', server_port=1260)
+    start_client(server_host='192.168.8.18', server_port=4748)
