@@ -10,15 +10,16 @@ PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
 # Conecta ao banco de dados SQLite
-conn_db = sqlite3.connect('clientes.db', check_same_thread=False) #check permite varias conexões no banco em threads diferentes
+conn_db = sqlite3.connect('clientes.db', check_same_thread=False)  # check permite várias conexões no banco em threads diferentes
 cursor = conn_db.cursor()
 
 # Cria a tabela 'clientes' se ela não existir
 cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT)''')
 conn_db.commit()
 
-# Lista global para armazenar os IDs dos usuários conectados
-online_user_ids = []
+# Dicionário global para armazenar as conexões dos clientes
+client_connections = {}
+client_connections_lock = threading.Lock()  # Lock para sincronizar o acesso ao dicionário
 
 def handle_client(conn, addr):
     print(f"Conectado por {addr}")
@@ -30,6 +31,7 @@ def handle_client(conn, addr):
     data = conn.recv(1024).decode()
     print(f"Recebido do cliente: {data} \n")
 
+    unique_id = None
     if data == '01':
         # Verifica se já existe um ID associado a este IP
         cursor.execute("SELECT id FROM clientes WHERE endereco=?", (addr[0],))
@@ -48,15 +50,14 @@ def handle_client(conn, addr):
             cursor.execute("INSERT INTO clientes (id, endereco, timestamp) VALUES (?, ?, ?)",
                            (unique_id, addr[0], str(time.time())))
             conn_db.commit()
-
     else:
         conn.sendall("Mensagem inválida. Envie '01' para se cadastrar. \n".encode())
 
-    # Adicionar o ID do usuário à lista global
-    online_user_ids.append(unique_id)
-
-    # Apresenta IDs dos usuários conectados
-    print(f"Lista de user IDs:  {online_user_ids} \n")
+    # Adicionar a conexão do cliente ao dicionário global
+    if unique_id:
+        with client_connections_lock:
+            client_connections[unique_id] = conn
+        print(f"Usuários conectados: {list(client_connections.keys())} \n")
 
     # Recebe dados do cliente
     while True:
@@ -64,12 +65,32 @@ def handle_client(conn, addr):
         if not data:
             break
 
-        posix_time = time.time()
-        print(f"Recebido de {addr[0]}: {data.decode()} \n")
-        if len(data.decode()) > 218:
-            conn.sendall(f"Erro: Mensagem muito grande! (Máximo de 218 caracteres) \n".encode())
+        message = data.decode()
+        print(f"Recebido de {unique_id}: {message} \n")
+
+        if len(message) >= 256:
+            conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
         else:
-            conn.sendall(f"Sucesso: Mensagem recebida com sucesso! \n".encode())
+            cod = message[:2]
+            src = message[2:15]
+            dst = message[15:30].strip()  # Remove espaços extras
+            timestamp = message[30:40]
+            msg_data = message[40:]
+
+            print(f"Mensagem decodificada - COD: {cod}, SRC: {src}, DST: '{dst}', TIMESTAMP: {timestamp}, DATA: {msg_data}")
+
+            with client_connections_lock:
+                if dst in client_connections:
+                    dest_conn = client_connections[dst]
+                    dest_conn.sendall(data)
+                    conn.sendall(f"Sucesso: Mensagem enviada para {dst}! \n".encode())
+                else:
+                    conn.sendall(f"Erro: Destino {dst} não encontrado. \n".encode())
+
+    # Remove a conexão do cliente do dicionário global
+    if unique_id:
+        with client_connections_lock:
+            del client_connections[unique_id]
 
     print(f"Conexão encerrada com {addr}.")
     conn.close()

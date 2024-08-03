@@ -1,7 +1,7 @@
 import socket
 import time
 
-def start_client(server_host='167.88.33.160', server_port=1193):
+def start_client(server_host='192.168.8.18', server_port=3917):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -39,16 +39,27 @@ def start_client(server_host='167.88.33.160', server_port=1193):
                 print("O conteúdo da mensagem deve ter no máximo 218 caracteres.")
                 continue
 
-            timestamp = time.time()
+            timestamp = int(time.time())
             # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
-            formatted_message = f'03{unique_id}{recipient_id}{int(timestamp)}{message_content.replace(" ", "_")}'
+            formatted_message = f'03{unique_id}{recipient_id}{timestamp}{message_content.replace(" ", "_")}'
             client_socket.sendall(formatted_message.encode())
             print("Mensagem enviada ao servidor: ", formatted_message)
             
             # Receber a resposta do servidor
             try:
                 data = client_socket.recv(1024).decode()
-                print(f"Resposta do servidor: {data}")
+                if data.startswith("Sucesso"):
+                    print(f"Resposta do servidor: {data}")
+                elif data.startswith("Erro"):
+                    print(f"Resposta do servidor: {data}")
+                else:
+                    # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
+                    src_id = data[2:15].strip()  # ID do remetente
+                    timestamp = int(data[30:40])  # Timestamp
+                    message_data = data[40:].strip()  # Conteúdo da mensagem
+                    
+
+                    print(f"Mensagem recebida de {src_id} em {timestamp}: {message_data}")
             except socket.timeout:
                 print("Tempo de espera excedido. Nenhuma resposta recebida do servidor.")
 
@@ -57,4 +68,4 @@ def start_client(server_host='167.88.33.160', server_port=1193):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='167.88.33.160', server_port=1193)
+    start_client(server_host='192.168.8.18', server_port=3917)
