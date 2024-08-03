@@ -2,7 +2,7 @@ import socket
 import time
 import datetime
 
-def start_client(server_host='192.168.8.18', server_port=4748):
+def start_client(server_host='192.168.8.18', server_port=3318):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -70,11 +70,11 @@ def start_client(server_host='192.168.8.18', server_port=4748):
                     if data:
                         if data.startswith("Sucesso") or data.startswith("Erro"):
                             print(f"Resposta do servidor: {data} \n")
-                        elif len(data) >= 40:
+                        elif len(data) >= 36:
                             # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
-                            src_id = data[2:15].strip()  # ID do remetente
-                            timestamp_str = data[30:40].strip()  # Timestamp
-                            message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
+                            src_id = data[:13].strip()  # ID do remetente
+                            timestamp_str = data[26:36].strip()  # Timestamp
+                            message_data = data[36:].strip().replace("_", " ")  # Conteúdo da mensagem
 
                             try:
                                 timestamp = int(timestamp_str)
@@ -98,4 +98,4 @@ def start_client(server_host='192.168.8.18', server_port=4748):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='192.168.8.18', server_port=4748)
+    start_client(server_host='192.168.8.18', server_port=3318)
