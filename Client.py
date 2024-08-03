@@ -1,5 +1,6 @@
 import socket
 import time
+import datetime
 
 def start_client(server_host='192.168.8.18', server_port=3917):
     # Criar um socket TCP
@@ -27,6 +28,15 @@ def start_client(server_host='192.168.8.18', server_port=3917):
         print(f"Recebido do servidor: {modified_id} \n")
         unique_id = modified_id[2:]
         print(f"ID único: {unique_id} \n")
+
+        def convert_timestamp(timestamp):
+            # Converter o timestamp Unix para um objeto datetime
+            dt_object = datetime.datetime.fromtimestamp(timestamp)
+            
+            # Formatar o objeto datetime para uma string legível
+            human_readable_time = dt_object.strftime('%H:%M:%S em %d/%m/%Y')
+            
+            return human_readable_time
 
         while True:
             print("Menu:")
@@ -65,7 +75,7 @@ def start_client(server_host='192.168.8.18', server_port=3917):
                             timestamp = int(data[30:40])  # Timestamp
                             message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
 
-                            print(f"Mensagem recebida de {src_id} em {timestamp}: {message_data} \n")
+                            print(f"Mensagem recebida de {src_id} em {convert_timestamp(timestamp)}: {message_data} \n")
                     else:
                         print("Nenhuma mensagem recebida. \n")
                 except socket.timeout:
