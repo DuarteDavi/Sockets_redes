@@ -17,6 +17,9 @@ cursor = conn_db.cursor()
 cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT)''')
 conn_db.commit()
 
+# Lista global para armazenar os IDs dos usuários conectados
+online_user_ids = []
+
 def handle_client(conn, addr):
     print(f"Conectado por {addr}")
 
@@ -48,6 +51,12 @@ def handle_client(conn, addr):
 
     else:
         conn.sendall("Mensagem inválida. Envie '01' para se cadastrar. \n".encode())
+
+    # Adicionar o ID do usuário à lista global
+    online_user_ids.append(unique_id)
+
+    # Apresenta IDs dos usuários conectados
+    print(f"Lista de user IDs:  {online_user_ids} \n")
 
     # Recebe dados do cliente
     while True:
