@@ -2,7 +2,10 @@ import socket
 import time
 import datetime
 
-def start_client(server_host='192.168.8.18', server_port=3318):
+server_host = "192.168.100.8"
+server_port = 2600
+
+def start_client(server_host, server_port):
     # Criar um socket TCP
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -11,6 +14,9 @@ def start_client(server_host='192.168.8.18', server_port=3318):
 
     # Dicionário para armazenar mensagens trocadas entre IDs
     messages_dict = {}
+    
+    # Armazena confirmações de entrega
+    delivery_confirmations = {}  
 
     try:
         # Conectar ao servidor
@@ -86,7 +92,22 @@ def start_client(server_host='192.168.8.18', server_port=3318):
                     if data:
                         if data.startswith("Sucesso") or data.startswith("Erro"):
                             print(f"Resposta do servidor: {data} \n")
-                        elif len(data):
+                        # Processar confirmação de entrega    
+                        elif data.startswith("07"):
+                            cod = data[:2]
+                            dst = data[2:15]
+                            timestamp_str = data[15:25].strip()
+
+                            try:
+                                timestamp = int(timestamp_str)
+                                print(f"Confirmação de entrega: Mensagens enviadas para {dst} até {convert_timestamp(timestamp)} foram entregues.")
+                                
+                                # Atualizar mensagens enviadas para o destinatário
+                                if dst in messages_dict:
+                                    messages_dict[dst] = [msg for msg in messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
+                            except ValueError:
+                                print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                        else:
                             # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
                             src_id = data[2:15].strip()  # ID do remetente
                             timestamp_str = data[30:40].strip()  # Timestamp
@@ -102,8 +123,6 @@ def start_client(server_host='192.168.8.18', server_port=3318):
                                 messages_dict[src_id].append(f"Recebido de {src_id} em {convert_timestamp(timestamp)}: {message_data}")
                             except ValueError:
                                 print(f"Erro ao converter o timestamp: {timestamp_str} \n")
-                        else:
-                            print("Formato de mensagem inválido recebido. \n")
                     else:
                         print("Nenhuma mensagem recebida. \n")
                 except socket.timeout:
@@ -138,4 +157,4 @@ def start_client(server_host='192.168.8.18', server_port=3318):
         client_socket.close()
 
 if __name__ == '__main__':
-    start_client(server_host='192.168.8.18', server_port=3318)
+    start_client(server_host, server_port)

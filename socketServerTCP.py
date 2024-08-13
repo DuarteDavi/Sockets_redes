@@ -97,7 +97,11 @@ def handle_client(conn, addr):
                         if dst in client_connections:
                             dest_conn = client_connections[dst]
                             dest_conn.sendall(data)
-                            conn.sendall(f"Sucesso: Mensagem enviada para {dst}! \n".encode())
+
+                            # Enviar confirmação de entrega ao remetente
+                            delivery_confirmation = f"Suas mensagens para 07{dst}, foram entregues em {timestamp}".encode()
+                            conn.sendall(delivery_confirmation)
+
                         else:
                             # Armazena a mensagem no banco de dados se o destinatário não estiver online
                             cursor.execute("INSERT INTO mensagens (dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?)",
