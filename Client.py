@@ -3,7 +3,7 @@ import time
 import datetime
 
 server_host = "192.168.100.8"
-server_port = 2600
+server_port = 1840
 
 def start_client(server_host, server_port):
     # Criar um socket TCP
@@ -16,7 +16,7 @@ def start_client(server_host, server_port):
     messages_dict = {}
     
     # Armazena confirmações de entrega
-    delivery_confirmations = {}  
+    delivery_confirmations = {}
 
     try:
         # Conectar ao servidor
@@ -41,10 +41,10 @@ def start_client(server_host, server_port):
         def convert_timestamp(timestamp):
             # Converter o timestamp Unix para um objeto datetime
             dt_object = datetime.datetime.fromtimestamp(timestamp)
-            
+
             # Formatar o objeto datetime para uma string legível
             human_readable_time = dt_object.strftime('%H:%M:%S em %d/%m/%Y')
-            
+
             return human_readable_time
 
         def display_messages_with_id(participant_id):
@@ -54,6 +54,12 @@ def start_client(server_host, server_port):
                     print(msg)
             else:
                 print(f"Nenhuma mensagem trocada com o ID {participant_id}.\n")
+
+        def send_read_confirmation(src_id, client_socket):
+            timestamp = int(time.time())
+            confirmation_message = f"08{src_id}{str(timestamp).ljust(10)}"
+            client_socket.sendall(confirmation_message.encode())
+            print(f"Mensagem de confirmação de leitura enviada: {confirmation_message} \n")
 
         while True:
             print("Menu:")
@@ -73,7 +79,7 @@ def start_client(server_host, server_port):
                 if len(message_content) > 218:
                     print("O conteúdo da mensagem deve ter no máximo 218 caracteres. \n")
                     continue
-
+                
                 timestamp = int(time.time())
                 # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
                 formatted_message = f'03{unique_id}{recipient_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}'
@@ -90,10 +96,9 @@ def start_client(server_host, server_port):
                 try:
                     data = client_socket.recv(1024).decode()
                     if data:
-                        if data.startswith("Sucesso") or data.startswith("Erro"):
-                            print(f"Resposta do servidor: {data} \n")
-                        # Processar confirmação de entrega    
-                        elif data.startswith("07"):
+                        print(f"Dados completos recebidos: {data}")
+
+                        if data.startswith("07"):  # Confirmação de entrega
                             cod = data[:2]
                             dst = data[2:15]
                             timestamp_str = data[15:25].strip()
@@ -102,27 +107,56 @@ def start_client(server_host, server_port):
                                 timestamp = int(timestamp_str)
                                 print(f"Confirmação de entrega: Mensagens enviadas para {dst} até {convert_timestamp(timestamp)} foram entregues.")
                                 
-                                # Atualizar mensagens enviadas para o destinatário
                                 if dst in messages_dict:
                                     messages_dict[dst] = [msg for msg in messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
                             except ValueError:
                                 print(f"Erro ao converter o timestamp: {timestamp_str} \n")
-                        else:
-                            # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
-                            src_id = data[2:15].strip()  # ID do remetente
-                            timestamp_str = data[30:40].strip()  # Timestamp
-                            message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
+
+                        elif data.startswith("08"):  # Confirmação de leitura
+                            cod = data[:2]
+                            src_id = data[2:15].strip()
+                            timestamp_str = data[15:25].strip()
+
+                            try:
+                                timestamp = int(timestamp_str)
+                                print(f"Confirmação de leitura recebida de {src_id} para mensagem enviada em {convert_timestamp(timestamp)} \n")
+                                
+                                # Enviar notificação de leitura para o cliente originador
+                                notification_message = f"09{src_id}{timestamp_str}"
+                                client_socket.sendall(notification_message.encode())
+                                print(f"Notificação de leitura enviada para {src_id}: {notification_message} \n")
+                            except ValueError:
+                                print(f"Erro ao converter o timestamp: '{timestamp_str}' \n")
+
+                        elif data.startswith("09"):  # Notificação de leitura
+                            cod = data[:2]
+                            src_id = data[2:15].strip()
+                            timestamp_str = data[15:25].strip()
+
+                            try:
+                                timestamp = int(timestamp_str)
+                                print(f"Notificação de leitura: Mensagem enviada para {src_id} foi lida em {convert_timestamp(timestamp)} \n")
+                            except ValueError:
+                                print(f"Erro ao converter o timestamp: '{timestamp_str}' \n")
+
+                        else:  # Mensagem padrão
+                            src_id = data[2:15].strip()
+                            timestamp_str = data[30:40].strip()
+                            message_data = data[40:].strip().replace("_", " ")
 
                             try:
                                 timestamp = int(timestamp_str)
                                 print(f"Mensagem recebida de {src_id} em {convert_timestamp(timestamp)}: {message_data} \n")
-                                
+
                                 # Armazenar a mensagem recebida
                                 if src_id not in messages_dict:
                                     messages_dict[src_id] = []
                                 messages_dict[src_id].append(f"Recebido de {src_id} em {convert_timestamp(timestamp)}: {message_data}")
+
+                                # Enviar confirmação de leitura
+                                send_read_confirmation(src_id, client_socket)
                             except ValueError:
-                                print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                                print(f"Erro ao converter o timestamp: '{timestamp_str}' \n")
                     else:
                         print("Nenhuma mensagem recebida. \n")
                 except socket.timeout:
