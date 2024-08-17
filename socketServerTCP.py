@@ -4,7 +4,7 @@ import time
 import random
 import threading
 
-HOST = '0.0.0.0'
+HOST = 'localhost'
 ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
 print(f"Servidor iniciado em {HOST}:{PORT}")
