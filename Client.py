@@ -24,7 +24,7 @@ class Client:
             print(f"Erro ao criar o socket: {e}")
             
         
-    def __convert_timestamp(timestamp):
+    def __convert_timestamp(self, timestamp):
             # Converter o timestamp Unix para um objeto datetime
             dt_object = datetime.datetime.fromtimestamp(timestamp)
             
@@ -33,10 +33,10 @@ class Client:
             
             return human_readable_time
 
-    def __display_messages_with_id(participant_id):
-            if participant_id in messages_dict:
+    def __display_messages_with_id(self, participant_id):
+            if participant_id in self.messages_dict:
                 print(f"Mensagens trocadas com {participant_id}:")
-                for msg in messages_dict[participant_id]:
+                for msg in self.messages_dict[participant_id]:
                     print(msg)
             else:
                 print(f"Nenhuma mensagem trocada com o ID {participant_id}.\n")
@@ -56,14 +56,14 @@ class Client:
     def send_message(self, recipient_id, message_content):
         timestamp = int(time.time())
         # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
-        formatted_message = f'03{unique_id}{recipient_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}'
+        formatted_message = f'03{self.unique_id}{recipient_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}'
         self.client_socket.sendall(formatted_message.encode())
         print("Mensagem enviada ao servidor: ", formatted_message + "\n")
 
         # Armazenar a mensagem enviada
-        if recipient_id not in messages_dict:
-            messages_dict[recipient_id] = []
-        messages_dict[recipient_id].append(f"Enviado para {recipient_id} em {convert_timestamp(timestamp)}: {message_content}")
+        if recipient_id not in self.messages_dict:
+            self.messages_dict[recipient_id] = []
+        self.messages_dict[recipient_id].append(f"Enviado para {recipient_id} em {self.__convert_timestamp(timestamp)}: {message_content}")
     
     def verify_messages(self):
         try:
@@ -79,11 +79,11 @@ class Client:
 
                     try:
                         timestamp = int(timestamp_str)
-                        print(f"Confirmação de entrega: Mensagens enviadas para {dst} até {convert_timestamp(timestamp)} foram entregues.")
+                        print(f"Confirmação de entrega: Mensagens enviadas para {dst} até {self.__convert_timestamp(timestamp)} foram entregues.")
 
                         # Atualizar mensagens enviadas para o destinatário
-                        if dst in messages_dict:
-                            messages_dict[dst] = [msg for msg in messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
+                        if dst in self.messages_dict:
+                            self.messages_dict[dst] = [msg for msg in self.messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
                     except ValueError:
                         print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                 else:
@@ -91,15 +91,59 @@ class Client:
                     src_id = data[2:15].strip()  # ID do remetente
                     timestamp_str = data[30:40].strip()  # Timestamp
                     message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
+                    message_data = message_data[:-25]
 
                     try:
                         timestamp = int(timestamp_str)
-                        print(f"Mensagem recebida de {src_id} em {convert_timestamp(timestamp)}: {message_data} \n")
+                        print(f"Mensagem recebida de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data} \n")
 
                         # Armazenar a mensagem recebida
-                        if src_id not in messages_dict:
-                            messages_dict[src_id] = []
-                        messages_dict[src_id].append(f"Recebido de {src_id} em {convert_timestamp(timestamp)}: {message_data}")
+                        if src_id not in self.messages_dict:
+                            self.messages_dict[src_id] = []
+                        self.messages_dict[src_id].append(f"Recebido de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data}")
+                    except ValueError:
+                        print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+            else:
+                print("Nenhuma mensagem recebida. \n")
+        except socket.timeout:
+            print("Nenhuma mensagem recebida. \n")
+    
+    def verify_groups(self):
+        try:
+            data = self.client_socket.recv(1024).decode()
+            if data:
+                if data.startswith("Sucesso") or data.startswith("Erro"):
+                    print(f"Resposta do servidor: {data} \n")
+                # Processar confirmação de entrega    
+                elif data.startswith("07"):
+                    cod = data[:2]
+                    dst = data[2:15]
+                    timestamp_str = data[15:25].strip()
+
+                    try:
+                        timestamp = int(timestamp_str)
+                        print(f"Confirmação de entrega: Mensagens enviadas para {dst} até {self.__convert_timestamp(timestamp)} foram entregues.")
+
+                        # Atualizar mensagens enviadas para o destinatário
+                        if dst in self.messages_dict:
+                            self.messages_dict[dst] = [msg for msg in self.messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
+                    except ValueError:
+                        print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                else:
+                    # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
+                    src_id = data[2:15].strip()  # ID do remetente
+                    timestamp_str = data[30:40].strip()  # Timestamp
+                    message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
+                    message_data = message_data[:-25]
+
+                    try:
+                        timestamp = int(timestamp_str)
+                        print(f"Mensagem recebida de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data} \n")
+
+                        # Armazenar a mensagem recebida
+                        if src_id not in self.messages_dict:
+                            self.messages_dict[src_id] = []
+                        self.messages_dict[src_id].append(f"Recebido de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data}")
                     except ValueError:
                         print(f"Erro ao converter o timestamp: {timestamp_str} \n")
             else:
@@ -108,6 +152,7 @@ class Client:
             print("Nenhuma mensagem recebida. \n")
 
     def chosen_choice(self):
+        timestamp = int(time.time())
         while True:
             choice = self.choices()
             if choice == '1':
@@ -150,28 +195,21 @@ class Client:
                     print("--------------------")
                     print("Submenu:")
                     print("1. Criar grupo")
-                    print("2. Ver grupos existentes")
-                    print("3. Enviar mensagem para um grupo")
+                    print("2. Enviar mensagem para um grupo")
                     print("9. Voltar ao menu principal")
                     print("--------------------")
                     sub_choice = input("Escolha uma opção: ")
                     if sub_choice == '1':
-                        group_name = input("Digite o nome do grupo: ")
                         group_members = input("Digite os IDs dos membros separados por vírgula: ")
                         # Enviar mensagem ao servidor
-                        formatted_message = f'04{unique_id}{group_name}{group_members}'
+                        formatted_message = f'10{self.unique_id}{str(timestamp).ljust(10)}{group_members}'
                         self.client_socket.sendall(formatted_message.encode())
                         print("Mensagem enviada ao servidor: ", formatted_message + "\n")
                     elif sub_choice == '2':
-                        # Verificar se há mensagens do servidor
-                        self.verify_messages()
-                    elif sub_choice == '3':
-                        group_name = input("Digite o nome do grupo: ")
+                        
+                        group_name = input("Digite o id do grupo: ")
                         message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
-                        # Enviar mensagem ao servidor
-                        formatted_message = f'05{unique_id}{group_name}{message_content}'
-                        self.client_socket.sendall(formatted_message.encode())
-                        print("Mensagem enviada ao servidor: ", formatted_message + "\n")
+                        send_message(group_name, message_content)
                     elif sub_choice == '9':
                         break
                     else:
@@ -185,7 +223,6 @@ class Client:
                 print("Opção inválida. Por favor, escolha 1, 2 ou 9. \n")
 
     def start(self):
-        
         try:
             # Conectar ao servidor
             self.client_socket.connect((self.host, self.port))
@@ -202,9 +239,10 @@ class Client:
 
             # Receber o ID único do servidor
             modified_id = self.client_socket.recv(1024).decode()
+            print(modified_id)
             print(f"Recebido do servidor: {modified_id} \n")
-            unique_id = modified_id[2:]
-            print(f"ID único: {unique_id} \n")
+            self.unique_id = modified_id[2:]
+            print(f"ID único: {self.unique_id} \n")
 
             self.chosen_choice()
                 
