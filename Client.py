@@ -86,6 +86,22 @@ class Client:
                             self.messages_dict[dst] = [msg for msg in self.messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
                     except ValueError:
                         print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                elif data.startswith("11"):
+                    print(data)
+                    cod = data[:2]
+                    group_id = data[2:15]
+                    timestamp_str = data[15:25].strip()
+
+                    try:
+                        timestamp = int(timestamp_str)
+                        print(f"Confirmação de entrega: Grupo {group_id} criado até {self.__convert_timestamp(timestamp)}.")
+                        print(f"ID do grupo: {group_id}")
+
+                        # Atualizar mensagens enviadas para o destinatário
+                        if group_id in self.messages_dict:
+                            self.messages_dict[group_id] = [msg for msg in self.messages_dict[group_id] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
+                    except ValueError:
+                        print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                 else:
                     # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
                     src_id = data[2:15].strip()  # ID do remetente
@@ -184,7 +200,7 @@ class Client:
                         if len(participant_id) != 13:
                             print("O ID do participante deve ter exatamente 13 dígitos. \n")
                             continue
-                        display_messages_with_id(participant_id)
+                        self.__display_messages_with_id(participant_id)
                     elif sub_choice == '9':
                         break
                     else:
@@ -205,11 +221,13 @@ class Client:
                         formatted_message = f'10{self.unique_id}{str(timestamp).ljust(10)}{group_members}'
                         self.client_socket.sendall(formatted_message.encode())
                         print("Mensagem enviada ao servidor: ", formatted_message + "\n")
+                        self.verify_messages()
+
                     elif sub_choice == '2':
                         
                         group_name = input("Digite o id do grupo: ")
                         message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
-                        send_message(group_name, message_content)
+                        self.send_message(group_name, message_content)
                     elif sub_choice == '9':
                         break
                     else:

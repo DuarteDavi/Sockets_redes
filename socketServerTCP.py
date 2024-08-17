@@ -95,18 +95,22 @@ def handle_client(conn, addr):
                         dst = ""
                     elif cod == "10":  # Criação de grupo
                         timestamp = message[15:25].strip()
+                        #print(timestamp)
                         members = message[25:].split()
+                        members = ' '.join(members)
                         member_list = []
                         for i in range(0, len(members), 13):
                             member_list.append(members[i])
                         # Add o src ao grupo
                         member_list.append(src)
+                        dst = members
+                        msg_data = ""
 
                     print(f"Mensagem decodificada - COD: {cod}, SRC: {src}, DST: '{dst}', TIMESTAMP: {timestamp}, DATA: {msg_data}")
 
                     if cod == "03":  # Mensagem de texto padrão
                         if cursor.execute("SELECT group_id FROM grupos WHERE group_id=?", (dst,)):
-                            members = cursor.fetchall("SELECT cliente_id FROM grupos WHERE group_id=?", (dst,))
+                            members = cursor.execute("SELECT cliente_id FROM grupos WHERE group_id=?", (dst,)).fetchall()
                             for member in members:
                                 with client_connections_lock:
                                     if dst in client_connections:
@@ -164,7 +168,7 @@ def handle_client(conn, addr):
                             conn_db.commit()
 
                         # Envia a confirmação de criação do grupo para o cliente
-                        all_members = members + src
+                        all_members = str(members)
                         conn.sendall(f"11{group_id}{timestamp}{all_members} \n".encode())
 
             except ConnectionResetError:
