@@ -103,12 +103,13 @@ class Client:
                     except ValueError:
                         print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                 else:
-                    print(data[0:2])
+                    print('COD: ', data[0:2])
+                    print("Data", data)
                     # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
                     src_id = data[2:15].strip()  # ID do remetente
                     timestamp_str = data[30:40].strip()  # Timestamp
                     message_data = data[40:].strip().replace("_", " ")  # Conteúdo da mensagem
-                    message_data = message_data[:-25]
+                    #message_data = message_data[:-25]
 
                     try:
                         timestamp = int(timestamp_str)
@@ -265,11 +266,11 @@ class Client:
 
             self.chosen_choice()
                 
-        except Exception as e:
+        finally:
             print(f"Erro ao conectar ao servidor: {e}")
             self.client_socket.close()
 
 if __name__ == '__main__':
     input("Pressione Enter para iniciar o cliente... \n")
     port = input("Digite a porta do servidor: ")
-    Client('localhost', int(port))
+    Client('25.62.205.242', 2620)

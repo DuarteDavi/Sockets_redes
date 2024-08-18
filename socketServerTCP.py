@@ -4,10 +4,10 @@ import time
 import random
 import threading
 
-HOST = '0.0.0.0'  # Endereço IP do servidor
+HOST = '25.62.205.242'  # Endereço IP do servidor
 ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
-PORT = 8080
+PORT = 2620
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
 # Conecta ao banco de dados SQLite
@@ -15,9 +15,10 @@ conn_db = sqlite3.connect('clientes.db', check_same_thread=False)  # check permi
 cursor = conn_db.cursor()
 
 # Cria as tabelas 'clientes' e 'mensagens' se elas não existirem
-cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT)''')
-cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens (dst TEXT, src TEXT, timestamp TEXT, msg_data TEXT)''')
-cursor.execute('''CREATE TABLE IF NOT EXISTS grupos (group_id TEXT, timestamp TEXT, msg_data TEXT, cliente_id TEXT, FOREIGN KEY (cliente_id) REFERENCES clientes(id))''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT, PRIMARY KEY (id))''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens (dst TEXT, src TEXT, timestamp TEXT, msg_data TEXT, PRIMARY KEY (dst, src, timestamp))''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS grupos (group_id TEXT, timestamp TEXT, PRIMARY KEY (group_id))''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS grupo_clientes (group_id TEXT, cliente_id TEXT, FOREIGN KEY (group_id) REFERENCES grupos(group_id), FOREIGN KEY (cliente_id) REFERENCES clientes(id))''')
 conn_db.commit()
 
 # Dicionário global para armazenar as conexões dos clientes
@@ -118,25 +119,25 @@ def handle_client(conn, addr):
                             is_group = True
                         if is_group:
                             print('group')
-                            members = cursor.execute("SELECT cliente_id FROM grupos WHERE group_id=?", (dst,)).fetchall()
+                            members = cursor.execute("SELECT cliente_id FROM grupo_clientes WHERE group_id=?", (dst,)).fetchall()
                             for user in members:
                                 user_id = user[0]
                                 with client_connections_lock:
                                     if user_id in client_connections:
                                         dest_conn = client_connections[user_id]
                                         dest_conn.sendall(data)
-
-                                        # Enviar confirmação de entrega ao remetente
-                                        delivery_confirmation = f"07{user_id}{timestamp}"
-                                        dest_conn.sendall(delivery_confirmation.encode())
-                                        print(f"Confirmação de entrega enviada para {src}: {delivery_confirmation} \n")
-
+                                        
+                                        # Enviar confirmação de entrega ao grupo
+                                        delivery_confirmation = f"07{src}{timestamp}"
+                                        conn.sendall(delivery_confirmation.encode())
+                                        print(f"Confirmação de entrega enviada para {user_id}: {delivery_confirmation} \n")
                                     else:
                                         # Armazena a mensagem no banco de dados se o destinatário não estiver online
                                         cursor.execute("INSERT INTO mensagens (dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?)",
                                                     (user_id, src, timestamp, msg_data))
                                         conn_db.commit()
                                         conn.sendall(f"Erro: Destino {user_id} não encontrado. Mensagem armazenada para entrega futura. \n".encode())
+
                         else:
                             print('2')
                             with client_connections_lock:
@@ -172,16 +173,19 @@ def handle_client(conn, addr):
                             else:
                                 print(f"Cliente originador {src} não está online. Não foi possível enviar a notificação de leitura. \n")
                     
-                    elif cod == "10": # Criação de grupo
+                    elif cod == "10":  # Criação de grupo
                         group_id = ''.join([str(random.randint(0, 9)) for _ in range(13)])
                         print('member_list', member_list)
+                        
+                        # Inserir o grupo na tabela 'grupos'
+                        cursor.execute("INSERT INTO grupos (group_id, timestamp) VALUES (?, ?)", (group_id, timestamp))
+                        
                         for member in member_list:
                             if member == '':
                                 continue
-                            # Insere o grupo no banco de dados
-                            cursor.execute("INSERT INTO grupos (group_id, timestamp, cliente_id) VALUES (?, ?, ?)",
-                                        (group_id, timestamp, member))
-                            conn_db.commit()
+                            # Inserir os membros na tabela 'grupo_clientes'
+                            cursor.execute("INSERT INTO grupo_clientes (group_id, cliente_id) VALUES (?, ?)", (group_id, member))
+                        conn_db.commit()
 
                         # Envia a confirmação de criação do grupo para o cliente
                         with client_connections_lock:
