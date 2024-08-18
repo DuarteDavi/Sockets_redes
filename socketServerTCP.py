@@ -89,16 +89,16 @@ def handle_client(conn, addr):
                     cod = message[:2]
                     src = message[2:15].strip()  # Remove espaços extras
                     if cod == "03":
-                        dst = message[15:30].strip()
-                        timestamp = message[30:40].strip()
-                        msg_data = message[40:]
+                        dst = message[15:28].strip()
+                        timestamp = message[28:38].strip()
+                        msg_data = message[38:]
                     elif cod == "08":  # Confirmação de leitura
                         timestamp = message[15:25].strip()
                         dst = ""
                     elif cod == "10":  # Criação de grupo
-                        timestamp = message[15:27].strip()
+                        timestamp = message[15:25].strip()
                         #print(timestamp)
-                        members = message[27:].split()
+                        members = message[25:].split()
                         members = ' '.join(members)
                         print('members', members)
                         
@@ -125,10 +125,10 @@ def handle_client(conn, addr):
                                 with client_connections_lock:
                                     if user_id in client_connections:
                                         dest_conn = client_connections[user_id]
-                                        dest_conn.sendall(data)
+                                        dest_conn.sendall((data.decode() + "\n").encode())
                                         
                                         # Enviar confirmação de entrega ao grupo
-                                        delivery_confirmation = f"07{src}{timestamp}"
+                                        delivery_confirmation = f"07{src}{timestamp}\n"
                                         conn.sendall(delivery_confirmation.encode())
                                         print(f"Confirmação de entrega enviada para {user_id}: {delivery_confirmation} \n")
                                     else:
@@ -148,7 +148,7 @@ def handle_client(conn, addr):
                                     dest_conn.sendall(data)
 
                                     # Enviar confirmação de entrega ao remetente
-                                    delivery_confirmation = f"07{dst}{timestamp}"
+                                    delivery_confirmation = f"07{dst}{timestamp}\n"
                                     conn.sendall(delivery_confirmation.encode())
                                     print(f"Confirmação de entrega enviada para {src}: {delivery_confirmation} \n")
 
@@ -164,7 +164,7 @@ def handle_client(conn, addr):
                         print(f"Confirmação de leitura recebida de {src} para mensagem enviada em {timestamp} \n")
 
                         # Notificar o cliente originador que sua menFsagem foi lida
-                        notification_message = f"09{src}{timestamp}"
+                        notification_message = f"09{src}{timestamp}\n".encode()
                         with client_connections_lock:
                             if src in client_connections:
                                 origin_conn = client_connections[src]
@@ -188,10 +188,11 @@ def handle_client(conn, addr):
                         conn_db.commit()
 
                         # Envia a confirmação de criação do grupo para o cliente
+                        notification_message = f"11{group_id}{timestamp}{members}\n"
                         with client_connections_lock:
                             if member in client_connections:
                                 dest_conn = client_connections[member]
-                                dest_conn.sendall(f"11{group_id}{timestamp}{members} \n".encode())
+                                dest_conn.sendall(notification_message.encode())
                                 print(f"Grupo {group_id} criado com sucesso. \n")
 
             except ConnectionResetError:
