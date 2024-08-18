@@ -86,8 +86,8 @@ class Client:
                             self.messages_dict[dst] = [msg for msg in self.messages_dict[dst] if int(msg.split(' em ')[1].split(': ')[0]) <= timestamp]
                     except ValueError:
                         print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                # Processar confirmação de entrega de grupo
                 elif data.startswith("11"):
-                    print(data)
                     cod = data[:2]
                     group_id = data[2:15]
                     timestamp_str = data[15:25].strip()
@@ -103,6 +103,7 @@ class Client:
                     except ValueError:
                         print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                 else:
+                    print(data[0:2])
                     # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
                     src_id = data[2:15].strip()  # ID do remetente
                     timestamp_str = data[30:40].strip()  # Timestamp
@@ -225,9 +226,9 @@ class Client:
 
                     elif sub_choice == '2':
                         
-                        group_name = input("Digite o id do grupo: ")
+                        group_id = input("Digite o id do grupo: ")
                         message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
-                        self.send_message(group_name, message_content)
+                        self.send_message(group_id, message_content)
                     elif sub_choice == '9':
                         break
                     else:
