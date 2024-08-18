@@ -16,7 +16,7 @@ cursor = conn_db.cursor()
 
 # Cria as tabelas 'clientes' e 'mensagens' se elas não existirem
 cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT, PRIMARY KEY (id))''')
-cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens (dst TEXT, src TEXT, timestamp TEXT, msg_data TEXT, PRIMARY KEY (dst, src, timestamp))''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens (cod_msg TEXT, dst TEXT, src TEXT, timestamp TEXT, msg_data TEXT, PRIMARY KEY (cod_msg, dst, src, timestamp))''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS grupos (group_id TEXT, timestamp TEXT, PRIMARY KEY (group_id))''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS grupo_clientes (group_id TEXT, cliente_id TEXT, FOREIGN KEY (group_id) REFERENCES grupos(group_id), FOREIGN KEY (cliente_id) REFERENCES clientes(id))''')
 conn_db.commit()
@@ -62,11 +62,11 @@ def handle_client(conn, addr):
         print(f"Usuários conectados: {list(client_connections.keys())} \n")
 
         # Verificar se há mensagens pendentes para o cliente
-        cursor.execute("SELECT src, timestamp, msg_data FROM mensagens WHERE dst=?", (unique_id,))
+        cursor.execute("SELECT cod_msg ,src, timestamp, msg_data FROM mensagens WHERE dst=?", (unique_id,))
         pending_messages = cursor.fetchall()
         for msg in pending_messages:
-            src, timestamp, msg_data = msg
-            conn.sendall(f"{src}{unique_id}{timestamp}{msg_data}".encode())
+            cod_msg, src, timestamp, msg_data = msg
+            conn.sendall(f"{cod_msg}{src}{unique_id}{timestamp}{msg_data}\n".encode())
 
         # Remover as mensagens pendentes entregues
         cursor.execute("DELETE FROM mensagens WHERE dst=?", (unique_id,))
@@ -142,8 +142,8 @@ def handle_client(conn, addr):
                                         print(f"Confirmação de entrega enviada para {user_id}: {delivery_confirmation} \n")
                                     else:
                                         # Armazena a mensagem no banco de dados se o destinatário não estiver online
-                                        cursor.execute("INSERT INTO mensagens (dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?)",
-                                                    (user_id, src, timestamp, msg_data))
+                                        cursor.execute("INSERT INTO mensagens (cod_msg ,dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?, ?)",
+                                                    (cod, user_id, src, timestamp, msg_data))
                                         conn_db.commit()
                                         conn.sendall(f"Erro: Destino {user_id} não encontrado. Mensagem armazenada para entrega futura. \n".encode())
 
@@ -164,8 +164,8 @@ def handle_client(conn, addr):
                                 else:
                                     print('teste')
                                     # Armazena a mensagem no banco de dados se o destinatário não estiver online
-                                    cursor.execute("INSERT INTO mensagens (dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?)",
-                                                (dst, src, timestamp, msg_data))
+                                    cursor.execute("INSERT INTO mensagens (cod_msg, dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?, ?)",
+                                                (cod, dst, src, timestamp, msg_data))
                                     conn_db.commit()
                                     conn.sendall(f"Erro: Destino {dst} não encontrado. Mensagem armazenada para entrega futura. \n".encode())
 

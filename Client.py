@@ -114,6 +114,7 @@ class Client:
                             if dst in self.messages_dict:
                                 self.messages_dict[dst] = [msg for msg in self.messages_dict[dst] if int(msg.split(' em ')[1].split(':')[0]) <= timestamp]
                         except ValueError:
+                            print('07.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                        
                     # Processar confirmação de entrega de grupo
@@ -131,6 +132,7 @@ class Client:
                             if group_id in self.messages_dict:
                                 self.messages_dict[group_id] = [msg for msg in self.messages_dict[group_id] if int(msg.split(' em ')[1].split(':')[0]) <= timestamp]
                         except ValueError:
+                            print('11.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                     else:
                         # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
@@ -148,6 +150,7 @@ class Client:
                                 self.messages_dict[src_id] = []
                             self.messages_dict[src_id].append(f"Recebido de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data}")
                         except ValueError:
+                            print('000.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
             else:
                 print("Nenhuma mensagem recebida. \n")
