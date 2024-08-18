@@ -53,11 +53,11 @@ class Client:
         choice = input("Escolha uma opção: ")
         return choice
     
-    def send_message(self, cod, recipient_id, message_content=""):
+    def send_message(self, recipient_id, message_content=""):
         timestamp = int(time.time())
         # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
         formated_unique_id = self.unique_id.replace("\n", "").replace(" ", "")
-        formatted_message = f'{cod}{formated_unique_id}{recipient_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}\n'
+        formatted_message = f'{"03"}{formated_unique_id}{recipient_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}\n'
         self.client_socket.sendall(formatted_message.encode())
         print("Mensagem enviada ao servidor: ", formatted_message + "\n")
 
@@ -65,6 +65,27 @@ class Client:
         if recipient_id not in self.messages_dict:
             self.messages_dict[recipient_id] = []
         self.messages_dict[recipient_id].append(f"Enviado para {recipient_id} em {self.__convert_timestamp(timestamp)}: {message_content}")
+    
+    def send_message_to_group(self, group_id, message_content=""):
+        timestamp = int(time.time())
+        # Formatar a mensagem com '03', o ID do cliente, ID do grupo, timestamp e conteúdo da mensagem
+        formated_unique_id = self.unique_id.replace("\n", "").replace(" ", "")
+        formatted_message = f'{"03"}{formated_unique_id}{group_id}{str(timestamp).ljust(10)}{message_content.replace(" ", "_")}\n'
+        self.client_socket.sendall(formatted_message.encode())
+        print("Mensagem enviada ao servidor: ", formatted_message + "\n")
+
+        # Armazenar a mensagem enviada
+        if group_id not in self.messages_dict:
+            self.messages_dict[group_id] = []
+        self.messages_dict[group_id].append(f"Enviado para {group_id} em {self.__convert_timestamp(timestamp)}: {message_content}")
+    
+    def create_group(self, members):
+        timestamp = int(time.time())
+        # Formatar a mensagem com '10', o ID do cliente, timestamp e membros do grupo
+        formated_unique_id = self.unique_id.replace("\n", "").replace(" ", "")
+        formatted_message = f'{"10"}{formated_unique_id}{str(timestamp).ljust(10)}{members}\n'
+        self.client_socket.sendall(formatted_message.encode())
+        print("Mensagem enviada ao servidor: ", formatted_message + "\n")
 
     def verify_messages(self):
         try:
@@ -72,7 +93,10 @@ class Client:
             if data:
                 messages = data.split("\n")
                 #print('messages:', messages)
-                for message in messages[:-1]:
+                
+                # Filtra a lista para remover os elementos vazios
+                messages = [msg for msg in messages if msg]
+                for message in messages:
                     message = message.strip()
                     if message.startswith("Sucesso") or message.startswith("Erro"):
                         print(f"Resposta do servidor: {message} \n")
@@ -145,7 +169,7 @@ class Client:
                     print("O conteúdo da mensagem deve ter no máximo 218 caracteres. \n")
                     return
                 # Enviar mensagem ao servidor
-                self.send_message('03',recipient_id, message_content)
+                self.send_message(recipient_id, message_content)
 
             elif choice == '2':
                 # Verificar se há mensagens do servidor
@@ -181,14 +205,14 @@ class Client:
                     if sub_choice == '1':
                         group_members = input("Digite os IDs dos membros separados por vírgula: ")
                         # Enviar mensagem ao servidor
-                        self.send_message('10', group_members)
+                        self.create_group(group_members)
                         self.verify_messages()
 
                     elif sub_choice == '2':
                         
                         group_id = input("Digite o id do grupo: ")
                         message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
-                        self.send_message('03', group_id, message_content)
+                        self.send_message_to_group(group_id, message_content)
                         self.verify_messages()
                     elif sub_choice == '9':
                         break

@@ -86,18 +86,26 @@ def handle_client(conn, addr):
                 if len(message) >= 256:
                     conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
                 else:
+                    print('message', message)
                     cod = message[:2]
+                    print('cod', cod)
                     src = message[2:15].strip()  # Remove espaços extras
+                    print('src', src)
                     if cod == "03":
+                        # cod(2)src(13)dst(13)timestamp(10)data(218)
                         dst = message[15:28].strip()
+                        print('dst', dst)
                         timestamp = message[28:38].strip()
+                        print('timestamp', timestamp)
                         msg_data = message[38:]
+                        print('msg_data', msg_data)
                     elif cod == "08":  # Confirmação de leitura
                         timestamp = message[15:25].strip()
                         dst = ""
                     elif cod == "10":  # Criação de grupo
+                        # cod(2)criador(13)timestamp(10)members(7*13)
                         timestamp = message[15:25].strip()
-                        #print(timestamp)
+                        print('timestamp', timestamp)
                         members = message[25:].split()
                         members = ' '.join(members)
                         print('members', members)
@@ -124,6 +132,7 @@ def handle_client(conn, addr):
                                 user_id = user[0]
                                 with client_connections_lock:
                                     if user_id in client_connections:
+                                        print('user_id', user_id)
                                         dest_conn = client_connections[user_id]
                                         dest_conn.sendall((data.decode() + "\n").encode())
                                         
@@ -179,7 +188,7 @@ def handle_client(conn, addr):
                         
                         # Inserir o grupo na tabela 'grupos'
                         cursor.execute("INSERT INTO grupos (group_id, timestamp) VALUES (?, ?)", (group_id, timestamp))
-                        
+                        print('member_list', member_list)
                         for member in member_list:
                             if member == '':
                                 continue
@@ -188,6 +197,7 @@ def handle_client(conn, addr):
                         conn_db.commit()
 
                         # Envia a confirmação de criação do grupo para o cliente
+                        # cod(2)criador(13)timestamp(10)members(7*13)
                         notification_message = f"11{group_id}{timestamp}{members}\n"
                         with client_connections_lock:
                             if member in client_connections:
