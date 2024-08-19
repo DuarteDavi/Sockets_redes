@@ -86,11 +86,8 @@ def handle_client(conn, addr):
                 if len(message) >= 256:
                     conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
                 else:
-                    print('message', message)
                     cod = message[:2]
-                    print('cod', cod)
                     src = message[2:15].strip()  # Remove espaços extras
-                    print('src', src)
                     if cod == "03":
                         # cod(2)src(13)dst(13)timestamp(10)data(218)
                         dst = message[15:28].strip()
@@ -105,11 +102,8 @@ def handle_client(conn, addr):
                     elif cod == "10":  # Criação de grupo
                         # cod(2)criador(13)timestamp(10)members(7*13)
                         timestamp = message[15:25].strip()
-                        print('timestamp', timestamp)
                         members = message[25:].split()
                         members = ' '.join(members)
-                        print('members', members)
-                        
                         member_list = members.split(',')
                         # Add o src ao grupo
                         member_list.append(src)
@@ -125,18 +119,18 @@ def handle_client(conn, addr):
                         result = cursor.fetchone()
                         if result:
                             is_group = True
+                        # Confirmação que a mensagem é para um grupo
                         if is_group:
-                            print('group')
                             members = cursor.execute("SELECT cliente_id FROM grupo_clientes WHERE group_id=?", (dst,)).fetchall()
+                            # Mandar mensagem para todos os membros do grupo
                             for user in members:
                                 user_id = user[0]
                                 with client_connections_lock:
                                     if user_id in client_connections:
-                                        print('user_id', user_id)
                                         dest_conn = client_connections[user_id]
                                         dest_conn.sendall((data.decode() + "\n").encode())
                                         
-                                        # Enviar confirmação de entrega ao grupo
+                                        # Enviar confirmação de entrega ao membro do grupo
                                         delivery_confirmation = f"07{src}{timestamp}\n"
                                         conn.sendall(delivery_confirmation.encode())
                                         print(f"Confirmação de entrega enviada para {user_id}: {delivery_confirmation} \n")
@@ -148,11 +142,8 @@ def handle_client(conn, addr):
                                         conn.sendall(f"Erro: Destino {user_id} não encontrado. Mensagem armazenada para entrega futura. \n".encode())
 
                         else:
-                            print('2')
                             with client_connections_lock:
-                                print('3')
                                 if dst in client_connections:
-                                    print('4')
                                     dest_conn = client_connections[dst]
                                     dest_conn.sendall(data)
 
@@ -173,7 +164,7 @@ def handle_client(conn, addr):
                         print(f"Confirmação de leitura recebida de {src} para mensagem enviada em {timestamp} \n")
 
                         # Notificar o cliente originador que sua menFsagem foi lida
-                        notification_message = f"09{src}{timestamp}\n".encode()
+                        notification_message = f"09{src}{timestamp}\n"
                         with client_connections_lock:
                             if src in client_connections:
                                 origin_conn = client_connections[src]
@@ -216,7 +207,7 @@ def handle_client(conn, addr):
         print(f"Conexão encerrada com {addr}. Usuário {unique_id} removido.")
         conn.close()
 
-def start_server():
+def start_server():#
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((HOST, PORT))
         server_socket.listen()

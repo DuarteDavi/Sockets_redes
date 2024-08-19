@@ -52,7 +52,14 @@ class Client:
         
         choice = input("Escolha uma opção: ")
         return choice
+    # Envio de confirmação de leitura
+    def send_read_confirmation(self, src_id):
+            timestamp = int(time.time())
+            confirmation_message = f"08{src_id}{str(timestamp).ljust(10)}\n"
+            self.client_socket.sendall(confirmation_message.encode())
+            print(f"Mensagem de confirmação de leitura enviada: {confirmation_message} \n")
     
+    # Envio de mensagem
     def send_message(self, recipient_id, message_content=""):
         timestamp = int(time.time())
         # Formatar a mensagem com '03', o ID do cliente, ID do destinatário, timestamp e conteúdo da mensagem
@@ -66,6 +73,7 @@ class Client:
             self.messages_dict[recipient_id] = []
         self.messages_dict[recipient_id].append(f"Enviado para {recipient_id} em {self.__convert_timestamp(timestamp)}: {message_content}")
     
+    # Envio de mensagem para grupo
     def send_message_to_group(self, group_id, message_content=""):
         timestamp = int(time.time())
         # Formatar a mensagem com '03', o ID do cliente, ID do grupo, timestamp e conteúdo da mensagem
@@ -79,6 +87,7 @@ class Client:
             self.messages_dict[group_id] = []
         self.messages_dict[group_id].append(f"Enviado para {group_id} em {self.__convert_timestamp(timestamp)}: {message_content}")
     
+    # Criação de grupo
     def create_group(self, members):
         timestamp = int(time.time())
         # Formatar a mensagem com '10', o ID do cliente, timestamp e membros do grupo
@@ -92,10 +101,11 @@ class Client:
             data = self.client_socket.recv(1024).decode()
             if data:
                 messages = data.split("\n")
-                #print('messages:', messages)
                 
                 # Filtra a lista para remover os elementos vazios
                 messages = [msg for msg in messages if msg]
+                print('\n|||------messages------|||')
+                # Processar todas as mensagens recebidas
                 for message in messages:
                     message = message.strip()
                     if message.startswith("Sucesso") or message.startswith("Erro"):
@@ -116,7 +126,36 @@ class Client:
                         except ValueError:
                             print('07.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
-                       
+                            
+                    # Confirmação de leitura
+                    elif data.startswith("08"):
+                        cod = data[:2]
+                        src_id = data[2:15].strip()
+                        timestamp_str = data[15:25].strip()
+
+                        try:
+                            timestamp = int(timestamp_str)
+                            print(f"Confirmação de leitura recebida de {src_id} para mensagem enviada em {self.__convert_timestamp(timestamp)} \n")
+                            
+                            # Enviar notificação de leitura para o cliente originador
+                            notification_message = f"09{src_id}{timestamp_str}\n"
+                            self.client_socket.sendall(notification_message.encode())
+                            print(f"Notificação de leitura enviada para {src_id}: {notification_message} \n")
+                        except ValueError:
+                            print(f"Erro ao converter o timestamp: '{timestamp_str}' \n")
+                            
+                    # Notificação de leitura
+                    elif data.startswith("09"):
+                        cod = data[:2]
+                        src_id = data[2:15].strip()
+                        timestamp_str = data[15:25].strip()
+
+                        try:
+                            timestamp = int(timestamp_str)
+                            print(f"Notificação de leitura: Mensagem enviada para {src_id} foi lida em {self.__convert_timestamp(timestamp)} \n")
+                        except ValueError:
+                            print(f"Erro ao converter o timestamp: '{timestamp_str}' \n")
+                            
                     # Processar confirmação de entrega de grupo
                     elif message.startswith("11"):
                         cod = message[:2]
@@ -149,9 +188,11 @@ class Client:
                             if src_id not in self.messages_dict:
                                 self.messages_dict[src_id] = []
                             self.messages_dict[src_id].append(f"Recebido de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data}")
+                            self.send_read_confirmation(src_id)
                         except ValueError:
                             print('000.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
+                print('|||------end-of-messages------|||\n')
             else:
                 print("Nenhuma mensagem recebida. \n")
         except socket.timeout:
@@ -161,8 +202,8 @@ class Client:
         timestamp = int(time.time())
         while True:
             choice = self.choices()
+            # Enviar mensagem ao servidor
             if choice == '1':
-                # Enviar mensagem ao servidor
                 recipient_id = input("Digite o ID do destinatário (13 dígitos): ")
                 if len(recipient_id) != 13:
                     print("O ID do destinatário deve ter exatamente 13 dígitos. \n")
@@ -174,8 +215,8 @@ class Client:
                 # Enviar mensagem ao servidor
                 self.send_message(recipient_id, message_content)
 
+            # Verificar se há mensagens do servidor
             elif choice == '2':
-                # Verificar se há mensagens do servidor
                 self.verify_messages()
                 # Submenu para visualizar mensagens trocadas com um ID específico
                 while True:
@@ -196,6 +237,7 @@ class Client:
                     else:
                         print("Opção inválida. Por favor, escolha 1 ou 9. \n")
             
+            # Submenu para grupos
             elif choice == '3':
                 while True:
                     print("--------------------")
@@ -205,14 +247,15 @@ class Client:
                     print("9. Voltar ao menu principal")
                     print("--------------------")
                     sub_choice = input("Escolha uma opção: ")
+                    # Criar grupo
                     if sub_choice == '1':
                         group_members = input("Digite os IDs dos membros separados por vírgula: ")
                         # Enviar mensagem ao servidor
                         self.create_group(group_members)
                         self.verify_messages()
 
+                    # Enviar mensagem para um grupo
                     elif sub_choice == '2':
-                        
                         group_id = input("Digite o id do grupo: ")
                         message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
                         self.send_message_to_group(group_id, message_content)
@@ -222,6 +265,7 @@ class Client:
                     else:
                         print("Opção inválida. Por favor, escolha 1, 2, 3 ou 9. \n")
 
+            # Encerrar o programa
             elif choice == '9':
                 print("Desconectando... \n")
                 self.client_socket.close()
