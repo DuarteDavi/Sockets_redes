@@ -4,10 +4,10 @@ import time
 import random
 import threading
 
-HOST = 'localhost'  # Endereço IP do servidor
+HOST = '25.62.205.242'  # Endereço IP do servidor
 ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
-#PORT = 2620
+PORT = 2620
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
 # Conecta ao banco de dados SQLite
@@ -86,13 +86,17 @@ def handle_client(conn, addr):
                 if len(message) >= 256:
                     conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
                 else:
+                    print([message])
                     cod = message[:2]
                     src = message[2:15].strip()  # Remove espaços extras
                     if cod == "03":
                         # cod(2)src(13)dst(13)timestamp(10)data(218)
                         dst = message[15:28].strip()
+                        print('dst', dst)
                         timestamp = message[28:38].strip()
+                        print('timestamp', timestamp)
                         msg_data = message[38:]
+                        print('msg_data', msg_data)
                     elif cod == "08":  # Confirmação de leitura
                         timestamp = message[15:25].strip()
                         msg_data = ""
@@ -183,16 +187,16 @@ def handle_client(conn, addr):
                                 continue
                             # Inserir os membros na tabela 'grupo_clientes'
                             cursor.execute("INSERT INTO grupo_clientes (group_id, cliente_id) VALUES (?, ?)", (group_id, member))
-                        conn_db.commit()
 
-                        # Envia a confirmação de criação do grupo para o cliente
-                        # cod(2)criador(13)timestamp(10)members(7*13)
-                        notification_message = f"11{group_id}{timestamp}{members}\n"
-                        with client_connections_lock:
-                            if member in client_connections:
-                                dest_conn = client_connections[member]
-                                dest_conn.sendall(notification_message.encode())
-                                print(f"Grupo {group_id} criado com sucesso. \n")
+                            # Envia a confirmação de criação do grupo para o cliente
+                            # cod(2)criador(13)timestamp(10)members(7*13)
+                            notification_message = f"11{group_id}{timestamp}{members}\n"
+                            with client_connections_lock:
+                                if member in client_connections:
+                                    dest_conn = client_connections[member]
+                                    dest_conn.sendall(notification_message.encode())
+                        print(f"Grupo {group_id} criado com sucesso. \n")
+                        conn_db.commit()
 
             except ConnectionResetError:
                 print(f"Conexão resetada pelo cliente {addr}.")
