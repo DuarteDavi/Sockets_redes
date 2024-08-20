@@ -113,7 +113,6 @@ class Client:
                         print(f"Resposta do servidor: {message} \n")
                     # Processar confirmação de entrega    
                     elif message.startswith("07"):
-                        print('Erro 7')
                         cod = message[:2]
                         dst = message[2:15]
                         timestamp_str = message[15:25].strip()
@@ -126,12 +125,10 @@ class Client:
                             if dst in self.messages_dict:
                                 self.messages_dict[dst] = [msg for msg in self.messages_dict[dst] if int(msg.split(' em ')[1].split(':')[0]) <= timestamp]
                         except ValueError:
-                            print('07.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                             
                     # Confirmação de leitura
                     elif message.startswith("08"):
-                        print('Erro 8')
                         cod = message[:2]
                         src_id = message[2:15].strip()
                         timestamp_str = message[15:25].strip()
@@ -149,7 +146,6 @@ class Client:
                             
                     # Notificação de leitura
                     elif message.startswith("09"):
-                        print('Erro 9')
                         cod = message[:2]
                         src_id = message[2:15].strip()
                         timestamp_str = message[15:25].strip()
@@ -166,7 +162,6 @@ class Client:
                             
                     # Processar confirmação de entrega de grupo
                     elif message.startswith("11"):
-                        print('Erro 11')
                         cod = message[:2]
                         group_id = message[2:15]
                         timestamp_str = message[15:25].strip()
@@ -180,10 +175,8 @@ class Client:
                             if group_id in self.messages_dict:
                                 self.messages_dict[group_id] = [msg for msg in self.messages_dict[group_id] if int(msg.split(' em ')[1].split(':')[0]) <= timestamp]
                         except ValueError:
-                            print('11.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                     else:
-                        print('Erro Else')
                         # Processar mensagem recebida (resposta do servidor com dados de quem enviou e data)
                         src_id = message[2:15].strip()  # ID do remetente
                         timestamp_str = message[28:38].strip()  # Timestamp
@@ -200,7 +193,6 @@ class Client:
                             self.messages_dict[src_id].append(f"Recebido de {src_id} em {self.__convert_timestamp(timestamp)}: {message_data}")
                             self.send_read_confirmation(src_id)
                         except ValueError:
-                            print('000.message:', message)
                             print(f"Erro ao converter o timestamp: {timestamp_str} \n")
                 print('|||------end-of-messages------|||\n')
             else:
@@ -217,11 +209,11 @@ class Client:
                 recipient_id = input("Digite o ID do destinatário (13 dígitos): ")
                 if len(recipient_id) != 13:
                     print("O ID do destinatário deve ter exatamente 13 dígitos. \n")
-                    return
+                    continue
                 message_content = input("Digite o conteúdo da mensagem (máximo de 218 caracteres): ")
                 if len(message_content) > 218:
                     print("O conteúdo da mensagem deve ter no máximo 218 caracteres. \n")
-                    return
+                    continue
                 # Enviar mensagem ao servidor
                 self.send_message(recipient_id, message_content)
 
@@ -299,7 +291,6 @@ class Client:
 
             # Receber o ID único do servidor
             modified_id = self.client_socket.recv(1024).decode()
-            print(modified_id)
             print(f"Recebido do servidor: {modified_id} \n")
             self.unique_id = modified_id[2:]
             print(f"ID único: {self.unique_id} \n")
@@ -310,6 +301,4 @@ class Client:
             self.client_socket.close()
 
 if __name__ == '__main__':
-    input("Pressione Enter para iniciar o cliente... \n")
-    port = input("Digite a porta do servidor: ")
     Client('25.62.205.242', 2620)

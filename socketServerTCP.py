@@ -7,14 +7,14 @@ import threading
 HOST = '25.62.205.242'  # Endereço IP do servidor
 ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
-PORT = 2620
+#PORT = 2620
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
 # Conecta ao banco de dados SQLite
 conn_db = sqlite3.connect('clientes.db', check_same_thread=False)  # check permite várias conexões no banco em threads diferentes
 cursor = conn_db.cursor()
 
-# Cria as tabelas 'clientes' e 'mensagens' se elas não existirem
+# Cria as tabelas 'clientes', 'mensagens', 'grupos' e 'grupo_clientes' se elas não existirem
 cursor.execute('''CREATE TABLE IF NOT EXISTS clientes (id TEXT, endereco TEXT, timestamp TEXT, PRIMARY KEY (id))''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS mensagens (cod_msg TEXT, dst TEXT, src TEXT, timestamp TEXT, msg_data TEXT, PRIMARY KEY (cod_msg, dst, src, timestamp))''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS grupos (group_id TEXT, timestamp TEXT, PRIMARY KEY (group_id))''')
@@ -86,17 +86,13 @@ def handle_client(conn, addr):
                 if len(message) >= 256:
                     conn.sendall(f"Erro: Mensagem deve ter no máximo 256 caracteres! \n".encode())
                 else:
-                    print([message])
                     cod = message[:2]
                     src = message[2:15].strip()  # Remove espaços extras
                     if cod == "03":
                         # cod(2)src(13)dst(13)timestamp(10)data(218)
                         dst = message[15:28].strip()
-                        print('dst', dst)
                         timestamp = message[28:38].strip()
-                        print('timestamp', timestamp)
                         msg_data = message[38:]
-                        print('msg_data', msg_data)
                     elif cod == "08":  # Confirmação de leitura
                         timestamp = message[15:25].strip()
                         msg_data = ""
@@ -115,7 +111,6 @@ def handle_client(conn, addr):
                     print(f"Mensagem decodificada - COD: {cod}, SRC: {src}, DST: '{dst}', TIMESTAMP: {timestamp}, DATA: {msg_data}")
 
                     if cod == "03":  # Mensagem de texto padrão
-                        print('1')
                         is_group = False
                         cursor.execute("SELECT group_id FROM grupos WHERE group_id=?", (dst,))
                         result = cursor.fetchone()
@@ -142,7 +137,7 @@ def handle_client(conn, addr):
                                                     (cod, user_id, src, timestamp, msg_data))
                                         conn_db.commit()
                                         conn.sendall(f"Erro: Destino {user_id} não encontrado. Mensagem armazenada para entrega futura. \n".encode())
-
+                        # Confirmação que a mensagem é para um cliente
                         else:
                             with client_connections_lock:
                                 if dst in client_connections:
@@ -155,7 +150,6 @@ def handle_client(conn, addr):
                                     print(f"Confirmação de entrega enviada para {src}: {delivery_confirmation} \n")
 
                                 else:
-                                    print('teste')
                                     # Armazena a mensagem no banco de dados se o destinatário não estiver online
                                     cursor.execute("INSERT INTO mensagens (cod_msg, dst, src, timestamp, msg_data) VALUES (?, ?, ?, ?, ?)",
                                                 (cod, dst, src, timestamp, msg_data))
@@ -177,11 +171,9 @@ def handle_client(conn, addr):
                     
                     elif cod == "10":  # Criação de grupo
                         group_id = ''.join([str(random.randint(0, 9)) for _ in range(13)])
-                        print('member_list', member_list)
                         
                         # Inserir o grupo na tabela 'grupos'
                         cursor.execute("INSERT INTO grupos (group_id, timestamp) VALUES (?, ?)", (group_id, timestamp))
-                        print('member_list', member_list)
                         for member in member_list:
                             if member == '':
                                 continue
@@ -209,7 +201,8 @@ def handle_client(conn, addr):
         print(f"Conexão encerrada com {addr}. Usuário {unique_id} removido.")
         conn.close()
 
-def start_server():#
+
+def start_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((HOST, PORT))
         server_socket.listen()
