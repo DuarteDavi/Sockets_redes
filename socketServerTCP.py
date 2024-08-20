@@ -4,10 +4,10 @@ import time
 import random
 import threading
 
-HOST = '25.62.205.242'  # Endereço IP do servidor
+HOST = 'localhost'  # Endereço IP do servidor
 ports = [random.randint(1024, 4915) for _ in range(4)]  # Lista de portas aleatórias entre 1024 e 4915
 PORT = random.choice(ports)  # Seleciona uma porta aleatória da lista
-PORT = 2620
+#PORT = 2620
 print(f"Servidor iniciado em {HOST}:{PORT}")
 
 # Conecta ao banco de dados SQLite
@@ -91,13 +91,11 @@ def handle_client(conn, addr):
                     if cod == "03":
                         # cod(2)src(13)dst(13)timestamp(10)data(218)
                         dst = message[15:28].strip()
-                        print('dst', dst)
                         timestamp = message[28:38].strip()
-                        print('timestamp', timestamp)
                         msg_data = message[38:]
-                        print('msg_data', msg_data)
                     elif cod == "08":  # Confirmação de leitura
                         timestamp = message[15:25].strip()
+                        msg_data = ""
                         dst = ""
                     elif cod == "10":  # Criação de grupo
                         # cod(2)criador(13)timestamp(10)members(7*13)
